@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.env/
+.venv/
+env/
+venv/
+ENV/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# Type checkers & linters
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE & editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+
+# ML training artifacts
+models/
+logs/
+wandb/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+evaluation_report.json
+my_config.json
+
+# Regeneratable data (run: python -m src.data.prepare)
+src/data/raw/
+src/data/processed/
+
+# Graphify
+graphify-out/
+
+# Claude Code — local config, agent prompts, and orchestrator instructions
+.claude/
+CLAUDE.md
+
+# Cursor — local IDE/agent config and rules
+.cursor/
