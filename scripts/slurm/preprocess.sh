@@ -19,8 +19,10 @@ echo "Node: ${SLURM_NODELIST:-$(hostname)}"
 echo "Started: $(date)"
 echo "======================================================================"
 
-PROJECT_ROOT="$(cd ../.. && pwd)"
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+PROJECT_ROOT="$(cd "$(dirname "${SCRIPT_PATH}")/../.." && pwd)"
 cd "${PROJECT_ROOT}"
+export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH:-}"
 echo "Working directory: ${PROJECT_ROOT}"
 
 mkdir -p logs/slurm
