@@ -20,9 +20,9 @@ echo "Started: $(date)"
 echo "======================================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-cd "${REPO_ROOT}"
-echo "Working directory: ${REPO_ROOT}"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+cd "${PROJECT_ROOT}"
+echo "Working directory: ${PROJECT_ROOT}"
 
 mkdir -p logs/slurm
 
@@ -33,13 +33,13 @@ python -m venv "${VENV_PATH}"
 source "${VENV_PATH}/bin/activate"
 
 python -m pip install --upgrade pip
-python -m pip install -r "${REPO_ROOT}/requirements.txt"
+python -m pip install -r "${PROJECT_ROOT}/requirements.txt"
 
 python --version
 
-FORCE_ARG="False"
+DOWNLOAD_ARGS=()
 if [[ "${FORCE_DOWNLOAD:-0}" =~ ^(1|true|yes)$ ]]; then
-    FORCE_ARG="True"
+    DOWNLOAD_ARGS+=(--force)
     echo "Force download enabled"
 fi
 
@@ -47,16 +47,7 @@ echo ""
 echo "Starting download..."
 echo ""
 
-python - <<PY
-import sys
-sys.path.insert(0, '${REPO_ROOT}')
-
-from src.data.download import download_all_texts
-
-print("Calling download_all_texts(force=${FORCE_ARG})...")
-download_all_texts(force=${FORCE_ARG})
-print("Download complete.")
-PY
+python "${PROJECT_ROOT}/src/data/download.py" "${DOWNLOAD_ARGS[@]}"
 
 echo ""
 echo "======================================================================"

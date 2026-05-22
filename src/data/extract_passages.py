@@ -1,7 +1,12 @@
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List
+
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
 def _extract_from_zarathustra(text: str, title: str) -> List[Dict[str, str]]:
@@ -75,7 +80,7 @@ def extract_all_passages() -> None:
         title = txt_file.stem
         print(f"Extracting passages from {title}...")
 
-        from .clean_for_training import strip_gutenberg_boilerplate, normalize_text
+        from src.data.clean_for_training import strip_gutenberg_boilerplate, normalize_text
 
         raw_text = txt_file.read_text(encoding="utf-8")
         clean_text = strip_gutenberg_boilerplate(raw_text)
@@ -97,3 +102,11 @@ def extract_all_passages() -> None:
             f.write(json.dumps(passage, ensure_ascii=False) + "\n")
 
     print(f"Total passages extracted: {len(all_passages)}")
+
+
+def main() -> None:
+    extract_all_passages()
+
+
+if __name__ == "__main__":
+    main()

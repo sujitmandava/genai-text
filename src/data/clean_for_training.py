@@ -47,3 +47,11 @@ def create_training_corpus() -> None:
     output_path.write_text(full_corpus, encoding="utf-8")
 
     print(f"Training corpus created: {len(full_corpus)} chars")
+
+
+def main() -> None:
+    create_training_corpus()
+
+
+if __name__ == "__main__":
+    main()

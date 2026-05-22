@@ -20,9 +20,9 @@ echo "Started: $(date)"
 echo "======================================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-cd "${REPO_ROOT}"
-echo "Working directory: ${REPO_ROOT}"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+cd "${PROJECT_ROOT}"
+echo "Working directory: ${PROJECT_ROOT}"
 
 mkdir -p logs/slurm
 
@@ -33,7 +33,7 @@ python -m venv "${VENV_PATH}"
 source "${VENV_PATH}/bin/activate"
 
 python -m pip install --upgrade pip
-python -m pip install -r "${REPO_ROOT}/requirements.txt"
+python -m pip install -r "${PROJECT_ROOT}/requirements.txt"
 
 python --version
 
@@ -43,37 +43,17 @@ if [[ ! -d "${RAW_DIR}" ]]; then
     exit 1
 fi
 
-TXT_COUNT=$(python - <<PY
-from pathlib import Path
-print(len(list(Path("${RAW_DIR}").glob("*.txt"))))
-PY
-)
-if [[ ${TXT_COUNT} -eq 0 ]]; then
+if ! compgen -G "${RAW_DIR}/*.txt" > /dev/null; then
     echo "ERROR: No .txt files found in ${RAW_DIR}"
     echo "Please run download.sh first"
     exit 1
 fi
 
-echo "Found ${TXT_COUNT} text files in ${RAW_DIR}"
 echo ""
 echo "Starting preprocessing..."
 echo ""
 
-python - <<PY
-import sys
-sys.path.insert(0, '${REPO_ROOT}')
-
-from src.data.clean_for_training import create_training_corpus
-from src.data.extract_passages import extract_all_passages
-
-print("Step 1: Creating training corpus...")
-create_training_corpus()
-
-print("\nStep 2: Extracting passages for RAG...")
-extract_all_passages()
-
-print("\nPreprocessing complete.")
-PY
+python "${PROJECT_ROOT}/src/data/prepare.py"
 
 echo ""
 echo "======================================================================"

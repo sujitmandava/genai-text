@@ -3,6 +3,7 @@
 import argparse
 import logging
 from pathlib import Path
+import sys
 import time
 
 import torch
@@ -14,9 +15,12 @@ from transformers import (
     DataCollatorForLanguageModeling
 )
 
-from .config import TrainingConfig
-from .dataset import create_datasets
-from .utils import set_seed, get_device, setup_logging, count_parameters, format_time
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from src.training.config import TrainingConfig
+from src.training.dataset import create_datasets
+from src.training.utils import set_seed, setup_logging, count_parameters, format_time
 
 logger = logging.getLogger(__name__)
 

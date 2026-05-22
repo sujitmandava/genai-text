@@ -21,9 +21,9 @@ echo "Started: $(date)"
 echo "======================================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-cd "${REPO_ROOT}"
-echo "Working directory: ${REPO_ROOT}"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+cd "${PROJECT_ROOT}"
+echo "Working directory: ${PROJECT_ROOT}"
 
 mkdir -p logs/slurm
 
@@ -34,7 +34,7 @@ python -m venv "${VENV_PATH}"
 source "${VENV_PATH}/bin/activate"
 
 python -m pip install --upgrade pip
-python -m pip install -r "${REPO_ROOT}/requirements.txt"
+python -m pip install -r "${PROJECT_ROOT}/requirements.txt"
 
 python --version
 
@@ -73,7 +73,7 @@ fi
 echo "Starting training..."
 echo ""
 
-python -m src.training.train \
+python "${PROJECT_ROOT}/src/training/train.py" \
     --corpus "${TRAIN_CORPUS}" \
     --model "${TRAIN_MODEL}" \
     --epochs "${TRAIN_EPOCHS}" \

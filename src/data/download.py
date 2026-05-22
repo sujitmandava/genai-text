@@ -1,6 +1,7 @@
 from pathlib import Path
 from time import sleep
 from typing import Dict
+import argparse
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -53,3 +54,18 @@ def download_all_texts(force: bool = False) -> None:
         except Exception as e:
             print(f"Error downloading {title}: {e}")
             raise
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Download Nietzsche texts")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-download files even if they already exist",
+    )
+    args = parser.parse_args()
+    download_all_texts(force=args.force)
+
+
+if __name__ == "__main__":
+    main()
