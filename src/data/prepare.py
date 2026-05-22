@@ -1,9 +1,9 @@
 import argparse
 from pathlib import Path
 
-from .download import download_all_texts
-from .clean_for_training import create_training_corpus
-from .extract_passages import extract_all_passages
+from src.data.download import download_all_texts
+from src.data.clean_for_training import create_training_corpus
+from src.data.extract_passages import extract_all_passages
 
 
 def main() -> None:
