@@ -1,19 +1,17 @@
-#!/usr/bin/env bash
-#SBATCH --account=fkn5296
-#SBATCH --job-name=text-preprocess
-#SBATCH --partition=gengpu
-#SBATCH --gres=gpu:1 
-#SBATCH --output=logs/slurm/text-preprocess-%j.out
-#SBATCH --error=logs/slurm/text-preprocess-%j.err
-#SBATCH --time=04:00:00
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=8G
-# Preprocess raw texts for genai-text project
-# CPU-only job that creates training corpus and extracts passages for RAG
+#!/bin/bash
+#SBATCH --account=e32706        ## Required: your Slurm account name, i.e. eXXXX, pXXXX or bXXXX
+#SBATCH --partition=gengpu      ## Required: buyin, short, normal, long, gengpu, genhimem, etc.
+#SBATCH --gres=gpu:1
+#SBATCH --time=2:00:00          ## Text preprocessing is small, but includes dependency install
+#SBATCH --nodes=1               ## How many computers/nodes do you need? Usually 1
+#SBATCH --ntasks=1              ## How many CPUs or processors do you need? (default value 1)
+#SBATCH --mem=8G                ## Headroom for dependency install and text processing
+#SBATCH --job-name=text_preprocess
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
 
 set -euo pipefail
 
-# Print job context
 echo "======================================================================"
 echo "Job: preprocess texts"
 echo "Job ID: ${SLURM_JOB_ID:-N/A}"
@@ -21,43 +19,38 @@ echo "Node: ${SLURM_NODELIST:-$(hostname)}"
 echo "Started: $(date)"
 echo "======================================================================"
 
-# Derive repo root from script location (portable across clusters)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${REPO_ROOT}"
 echo "Working directory: ${REPO_ROOT}"
 
-# Create logs directory if it doesn't exist
 mkdir -p logs/slurm
 
-# Environment activation (optional, env-driven)
-if [[ -n "${GENAI_TEXT_ENV:-}" ]]; then
-    if [[ -f "${GENAI_TEXT_ENV}" ]]; then
-        echo "Activating environment from file: ${GENAI_TEXT_ENV}"
-        source "${GENAI_TEXT_ENV}"
-    elif command -v conda &> /dev/null; then
-        echo "Activating conda environment: ${GENAI_TEXT_ENV}"
-        eval "$(conda shell.bash hook)"
-        conda activate "${GENAI_TEXT_ENV}"
-    else
-        echo "WARNING: GENAI_TEXT_ENV is set but conda is not available"
-    fi
-elif [[ -f .venv/bin/activate ]]; then
-    echo "Activating local virtualenv: .venv"
-    source .venv/bin/activate
-fi
+module load mamba/24.3.0
 
-# Validate raw data exists
+VENV_PATH="${GENAI_TEXT_VENV:-${HOME}/.venvs/genai-text}"
+python -m venv "${VENV_PATH}"
+source "${VENV_PATH}/bin/activate"
+
+python -m pip install --upgrade pip
+python -m pip install -r "${REPO_ROOT}/requirements.txt"
+
+python --version
+
 RAW_DIR="src/data/raw"
 if [[ ! -d "${RAW_DIR}" ]]; then
     echo "ERROR: Raw data directory not found: ${RAW_DIR}"
     exit 1
 fi
 
-TXT_COUNT=$(find "${RAW_DIR}" -name "*.txt" -type f | wc -l)
+TXT_COUNT=$(python - <<PY
+from pathlib import Path
+print(len(list(Path("${RAW_DIR}").glob("*.txt"))))
+PY
+)
 if [[ ${TXT_COUNT} -eq 0 ]]; then
     echo "ERROR: No .txt files found in ${RAW_DIR}"
-    echo "Please run download.sbatch first"
+    echo "Please run download.sh first"
     exit 1
 fi
 
@@ -66,7 +59,6 @@ echo ""
 echo "Starting preprocessing..."
 echo ""
 
-# Preprocess texts using Python heredoc
 python - <<PY
 import sys
 sys.path.insert(0, '${REPO_ROOT}')
