@@ -19,8 +19,7 @@ echo "Node: ${SLURM_NODELIST:-$(hostname)}"
 echo "Started: $(date)"
 echo "======================================================================"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PROJECT_ROOT="$(cd ../ && pwd)"
 cd "${PROJECT_ROOT}"
 echo "Working directory: ${PROJECT_ROOT}"
 
