@@ -19,7 +19,7 @@ echo "Node: ${SLURM_NODELIST:-$(hostname)}"
 echo "Started: $(date)"
 echo "======================================================================"
 
-PROJECT_ROOT="$(cd ../ && pwd)"
+PROJECT_ROOT="$(cd ../.. && pwd)"
 cd "${PROJECT_ROOT}"
 echo "Working directory: ${PROJECT_ROOT}"
 
