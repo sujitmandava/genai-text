@@ -20,7 +20,7 @@ echo "GPUs: ${CUDA_VISIBLE_DEVICES:-N/A}"
 echo "Started: $(date)"
 echo "======================================================================"
 
-PROJECT_ROOT="$(cd ../ && pwd)"
+PROJECT_ROOT="$(cd ../.. && pwd)"
 cd "${PROJECT_ROOT}"
 echo "Working directory: ${PROJECT_ROOT}"
 
