@@ -70,6 +70,8 @@ wandb/
 *.ckpt
 evaluation_report.json
 my_config.json
+*.out
+*.err
 
 # Regeneratable data (run: python -m src.data.prepare)
 src/data/raw/
