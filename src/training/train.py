@@ -6,6 +6,11 @@ from pathlib import Path
 import sys
 import time
 
+from dotenv import load_dotenv
+
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
+
 import torch
 from transformers import (
     GPT2LMHeadModel,
