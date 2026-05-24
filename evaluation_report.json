@@ -1,0 +1,46 @@
+{
+  "checkpoint": "models/nietzsche-bot/final",
+  "model_name": "gpt2",
+  "perplexity": 44.12491989135742,
+  "validation_size": 85,
+  "generation_samples": [
+    {
+      "prompt": "God is",
+      "generated_text": "God is not at all like God, but is like God, who is like God. That is to say, he is not like God, who is like God, who is like God, who is like God, who is like God, who is like God, who is like God.\n\nAnd this is the truth of Christianity:\n\nGod is not like God, who is like God, who is like God, who is like God, who is like God, who is like"
+    },
+    {
+      "prompt": "Truth",
+      "generated_text": "Truth\n\nby John A. Cook\n\nA man, a man who had been born and bred in the wilderness and was in danger of being lost to the wilderness, is born and bred in a city, and has to choose between those two things:\n\nHe who has been raised in a city, is born and bred in the wilderness, and has to choose between those two things:\n\nThe one who has been raised in a city, is born and bred in the wilderness,"
+    },
+    {
+      "prompt": "The will to power",
+      "generated_text": "The will to power in the present day is the will to control the future.\n\nThis will of course mean that the people, who will be at present the rulers of the world, will have a great share in the future, and will have an immense power in the present day.\n\nThus, however, the power of the people over the future belongs to them, not to the rulers of the world, for they will be the rulers of the future.\n\nBut the power of"
+    },
+    {
+      "prompt": "What does not kill me",
+      "generated_text": "What does not kill me?\n\nAnd is not the man that I am,\n\nTo be dead?\n\n\u2014\n\nAnd this is a truth!\n\nIt is not even the truth that will make a man\nlive; it is the truth that will break me!\n\n\u2014\n\nThus says the Gospel to the people:\n\n\"If thou dost not love me, then seek me\nand thy God, for I am not my God.\"\n\n"
+    },
+    {
+      "prompt": "Man is something that shall be overcome",
+      "generated_text": "Man is something that shall be overcome.\n\nAs for my son, I say unto him: Verily, verily, he hath come out of his home, and hath not entered into his home.\n\nAnd so the brethren of my house were present.\n\nAnd thus did the brethren of my house say unto me: Verily, verily, I say unto him, Verily, I say unto him, Verily, I say unto him, Verily, I say"
+    },
+    {
+      "prompt": "There are no facts,",
+      "generated_text": "There are no facts, no evidence, no evidence of that. No evidence whatsoever.\n\nThere are no facts, no evidence of that. No evidence whatsoever.\n\nThere are no facts, no evidence of that. No evidence whatsoever.\n\nThere are no facts, no evidence of that. No evidence whatsoever.\n\nThere are no facts, no evidence of that. No evidence whatsoever.\n\nThere are no facts, no evidence of that. No evidence whatsoever.\n\nThere"
+    },
+    {
+      "prompt": "The overman",
+      "generated_text": "The overman and overman have often found their way into the minds of men. The overman is like a dog. The overman is like a dog who can do nothing but eat and drink. The overman is like a dog who can not make himself happy.\n\nWe have a general principle that men do not make mistakes; and a general principle that they do not make mistakes. This principle is called the principle of the rule.\n\nThe rule is that the overman must"
+    },
+    {
+      "prompt": "Morality is",
+      "generated_text": "Morality is the ability to live in a life in which we do not live in a certain sense. It is possible to live in a life in which there is no morality. It is possible to live in a life in which there is no morality. It is possible to live in a life in which there is no moral order and no order of life. There is no life in which there is no morality; there is no morality.\n\nThere is no moral order. There is no morality"
+    }
+  ],
+  "generation_config": {
+    "max_length": 100,
+    "temperature": 0.8,
+    "top_p": 0.9,
+    "top_k": 50
+  }
+}
