@@ -20,10 +20,8 @@ echo "GPUs: ${CUDA_VISIBLE_DEVICES:-N/A}"
 echo "Started: $(date)"
 echo "======================================================================"
 
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
-PROJECT_ROOT="$(cd "$(dirname "${SCRIPT_PATH}")/../.." && pwd)"
+PROJECT_ROOT="$(cd ../.. && pwd)"
 cd "${PROJECT_ROOT}"
-export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH:-}"
 echo "Working directory: ${PROJECT_ROOT}"
 
 module load mamba/24.3.0
