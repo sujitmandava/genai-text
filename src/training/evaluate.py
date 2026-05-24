@@ -4,15 +4,19 @@ import argparse
 import json
 import logging
 from pathlib import Path
+import sys
 from typing import Optional
 
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from torch.utils.data import DataLoader
 
-from .config import TrainingConfig
-from .dataset import NietzscheDataset
-from .utils import set_seed, get_device
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from src.training.config import TrainingConfig
+from src.training.dataset import NietzscheDataset
+from src.training.utils import set_seed, get_device
 
 logger = logging.getLogger(__name__)
 
