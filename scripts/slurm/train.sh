@@ -2,10 +2,10 @@
 #SBATCH --account=e32706        ## Required: your Slurm account name, i.e. eXXXX, pXXXX or bXXXX
 #SBATCH --partition=gengpu      ## Required: buyin, short, normal, long, gengpu, genhimem, etc.
 #SBATCH --gres=gpu:1
-#SBATCH --time=8:00:00          ## Increase for gpt2-medium or larger models
+#SBATCH --time=24:00:00          ## Increase for gpt2-medium or larger models
 #SBATCH --nodes=1               ## How many computers/nodes do you need? Usually 1
 #SBATCH --ntasks=1              ## How many CPUs or processors do you need? (default value 1)
-#SBATCH --mem=16G               ## More headroom for model load, checkpoints, and Trainer
+#SBATCH --mem=25G               ## More headroom for model load, checkpoints, and Trainer
 #SBATCH --job-name=text_train
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
@@ -23,8 +23,6 @@ echo "======================================================================"
 PROJECT_ROOT="$(cd ../.. && pwd)"
 cd "${PROJECT_ROOT}"
 echo "Working directory: ${PROJECT_ROOT}"
-
-mkdir -p logs/slurm
 
 module load mamba/24.3.0
 
