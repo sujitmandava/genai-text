@@ -13,6 +13,12 @@ BOOKS: Dict[str, int] = {
     "Beyond Good and Evil": 4363,
     "Ecce Homo": 7206,
     "The Antichrist": 19322,
+    "The Genealogy of Morals": 52190,
+    "Twilight of the Idols": 52263,
+    "The Birth of Tragedy": 51356,
+    "Human All Too Human": 38145,
+    "The Dawn of Day": 39955,
+    "The Joyful Wisdom": 52881,
 }
 
 
