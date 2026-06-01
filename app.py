@@ -6,8 +6,18 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.rag.retrieval import Retriever
 from src.rag.prompt_builder import NietzschePromptBuilder
-
-MODEL_PATH = "models/nietzsche-bot/final"
+from src.app_config import (
+    MODEL_PATH,
+    CHAT_NUM_PASSAGES,
+    CHAT_MAX_NEW_TOKENS,
+    CHAT_TEMPERATURE,
+    CHAT_TOP_P,
+    CHAT_TOP_K,
+    PROSE_MAX_LENGTH,
+    PROSE_TEMPERATURE,
+    PROSE_TOP_P,
+    PROSE_TOP_K,
+)
 
 print("Loading model...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
@@ -33,26 +43,34 @@ except FileNotFoundError as e:
     rag_available = False
 
 
-def chat_with_nietzsche(question: str, num_passages: int, max_length: int, temperature: float) -> tuple[str, str]:
-    """Conversational Q&A with Nietzsche using RAG."""
-    if not question.strip():
-        return "Please ask a question.", ""
+def chat_with_nietzsche(message: str, history: list) -> str:
+    """Conversational Q&A with Nietzsche using RAG.
+
+    Args:
+        message: User's current message.
+        history: Chat history (list of [user_msg, assistant_msg] pairs).
+
+    Returns:
+        Nietzsche's response string.
+    """
+    if not message.strip():
+        return "Please ask a question."
 
     if not rag_available:
-        return "RAG index not available. Run `python -m src.rag.ingest` first.", ""
+        return "RAG index not available. Run `python -m src.rag.ingest` first."
 
-    passages = retriever.retrieve(question, k=num_passages)
-    prompt = prompt_builder.build(question, passages)
+    passages = retriever.retrieve(message, k=CHAT_NUM_PASSAGES)
+    prompt = prompt_builder.build(message, passages)
 
     inputs = tokenizer(prompt, return_tensors="pt", padding=True).to(device)
 
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=max_length,
-            temperature=temperature,
-            top_p=0.9,
-            top_k=50,
+            max_new_tokens=CHAT_MAX_NEW_TOKENS,
+            temperature=CHAT_TEMPERATURE,
+            top_p=CHAT_TOP_P,
+            top_k=CHAT_TOP_K,
             do_sample=True,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
@@ -66,15 +84,10 @@ def chat_with_nietzsche(question: str, num_passages: int, max_length: int, tempe
     else:
         response = full_output[len(prompt):].strip()
 
-    context_display = "\n\n".join(
-        f"**{p.source}** ({p.section}):\n> {p.text[:200]}..." if len(p.text) > 200 else f"**{p.source}** ({p.section}):\n> {p.text}"
-        for p in passages
-    )
-
-    return response, context_display
+    return response
 
 
-def generate_prose(prompt: str, max_length: int, temperature: float, top_p: float, top_k: int) -> str:
+def generate_prose(prompt: str) -> str:
     """Generate prose continuation in Nietzsche's style."""
     if not prompt.strip():
         return "Please enter a prompt."
@@ -84,10 +97,10 @@ def generate_prose(prompt: str, max_length: int, temperature: float, top_p: floa
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_length=max_length,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=int(top_k),
+            max_length=PROSE_MAX_LENGTH,
+            temperature=PROSE_TEMPERATURE,
+            top_p=PROSE_TOP_P,
+            top_k=PROSE_TOP_K,
             do_sample=True,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
@@ -97,80 +110,120 @@ def generate_prose(prompt: str, max_length: int, temperature: float, top_p: floa
     return generated
 
 
-with gr.Blocks(title="NietzscheBot", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# NietzscheBot")
-    gr.Markdown("GPT-2 fine-tuned on Nietzsche's works. Ask questions or continue his prose.")
+custom_css = """
+/* Nietzsche aesthetic: elegant serif, moody palette */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+    --abyss-dark: #1a1512;
+    --parchment: #f4e8d0;
+    --gold-accent: #d4a574;
+    --deep-shadow: #2d2419;
+}
+
+body, .gradio-container {
+    font-family: 'Cormorant Garamond', serif !important;
+    background: linear-gradient(135deg, var(--abyss-dark) 0%, var(--deep-shadow) 100%);
+    color: var(--parchment) !important;
+}
+
+h1, h2, h3, .markdown h1, .markdown h2, .markdown h3 {
+    font-family: 'Cormorant Garamond', serif !important;
+    font-weight: 600;
+    color: var(--gold-accent) !important;
+    letter-spacing: 0.05em;
+}
+
+.markdown p, .markdown em {
+    color: var(--parchment) !important;
+    font-style: italic;
+    font-size: 1.1em;
+}
+
+button {
+    font-family: 'Cormorant Garamond', serif !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: var(--gold-accent) !important;
+    color: var(--abyss-dark) !important;
+    border: none !important;
+}
+
+button:hover {
+    background: var(--parchment) !important;
+    color: var(--abyss-dark) !important;
+}
+
+.textbox, textarea, input {
+    background: var(--deep-shadow) !important;
+    color: var(--parchment) !important;
+    border: 1px solid var(--gold-accent) !important;
+    font-family: 'Cormorant Garamond', serif !important;
+}
+
+.tab-nav button {
+    color: var(--gold-accent) !important;
+    background: transparent !important;
+    border-bottom: 2px solid transparent !important;
+}
+
+.tab-nav button.selected {
+    border-bottom: 2px solid var(--gold-accent) !important;
+}
+"""
+
+with gr.Blocks(title="Speak with Nietzsche", theme=gr.themes.Soft(), css=custom_css) as demo:
+    gr.Markdown("# Thus Spoke the Philosopher")
+    gr.Markdown("*And if you gaze long into an abyss, the abyss also gazes into you.*")
 
     with gr.Tabs():
-        with gr.Tab("Chat with Nietzsche"):
-            gr.Markdown("Ask Nietzsche a question. The model retrieves relevant passages from his works to inform the response.")
+        with gr.Tab("Dialogue"):
+            gr.Markdown("Pose your question. The philosopher draws from his corpus to respond.")
 
-            with gr.Row():
-                with gr.Column(scale=2):
-                    chat_input = gr.Textbox(
-                        label="Your Question",
-                        placeholder="What is the will to power?",
-                        lines=2
-                    )
-                    with gr.Row():
-                        chat_passages = gr.Slider(1, 5, value=3, step=1, label="Retrieved Passages")
-                        chat_length = gr.Slider(50, 300, value=150, step=10, label="Max Response Length")
-                        chat_temp = gr.Slider(0.3, 1.5, value=0.8, step=0.1, label="Temperature")
-                    chat_btn = gr.Button("Ask Nietzsche", variant="primary")
-
-                with gr.Column(scale=2):
-                    chat_output = gr.Textbox(label="Nietzsche's Response", lines=8)
-
-            with gr.Accordion("Retrieved Context", open=False):
-                context_output = gr.Markdown(label="Passages used for context")
-
-            chat_btn.click(
-                chat_with_nietzsche,
-                inputs=[chat_input, chat_passages, chat_length, chat_temp],
-                outputs=[chat_output, context_output]
-            )
-
-            gr.Examples(
+            chat_interface = gr.ChatInterface(
+                fn=chat_with_nietzsche,
+                textbox=gr.Textbox(
+                    placeholder="Speak your question into the abyss...",
+                    container=False,
+                    scale=7,
+                    submit_btn="Summon Response"
+                ),
                 examples=[
-                    ["What is the will to power?", 3, 150, 0.8],
-                    ["How should one live?", 3, 200, 0.7],
-                    ["What do you think of Christianity?", 3, 150, 0.8],
-                    ["Is God dead?", 3, 150, 0.9],
+                    "What is the will to power?",
+                    "How should one live?",
+                    "What do you think of Christianity?",
+                    "Is God dead?",
+                    "What is the Ubermensch?",
                 ],
-                inputs=[chat_input, chat_passages, chat_length, chat_temp],
             )
 
         with gr.Tab("Continue Writing"):
-            gr.Markdown("Enter a fragment and let Nietzsche continue writing in his philosophical style.")
+            gr.Markdown("Enter a fragment and let Nietzsche continue the thought in his philosophical voice.")
 
             prose_input = gr.Textbox(
-                label="Prompt",
+                label="Opening Fragment",
                 placeholder="The will to power...",
                 lines=3
             )
-            with gr.Row():
-                prose_length = gr.Slider(50, 500, value=150, step=10, label="Max Length")
-                prose_temp = gr.Slider(0.1, 2.0, value=0.8, step=0.1, label="Temperature")
-                prose_top_p = gr.Slider(0.1, 1.0, value=0.9, step=0.05, label="Top P")
-                prose_top_k = gr.Slider(1, 100, value=50, step=1, label="Top K")
 
-            prose_btn = gr.Button("Generate", variant="primary")
-            prose_output = gr.Textbox(label="Generated Text", lines=10)
+            prose_btn = gr.Button("Continue the Thought", variant="primary")
+            prose_output = gr.Textbox(label="Generated Prose", lines=10)
 
             prose_btn.click(
                 generate_prose,
-                inputs=[prose_input, prose_length, prose_temp, prose_top_p, prose_top_k],
+                inputs=prose_input,
                 outputs=prose_output
             )
 
             gr.Examples(
                 examples=[
-                    ["The will to power", 150, 0.8, 0.9, 50],
-                    ["Man is something that shall be overcome", 200, 0.7, 0.9, 50],
-                    ["God is dead", 150, 0.8, 0.9, 50],
-                    ["What does not kill me", 100, 0.9, 0.9, 50],
+                    "The will to power",
+                    "Man is something that shall be overcome",
+                    "God is dead",
+                    "What does not kill me",
                 ],
-                inputs=[prose_input, prose_length, prose_temp, prose_top_p, prose_top_k],
+                inputs=prose_input,
             )
 
 if __name__ == "__main__":
