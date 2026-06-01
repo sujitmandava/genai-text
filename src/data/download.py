@@ -19,6 +19,11 @@ BOOKS: Dict[str, int] = {
     "Human All Too Human": 38145,
     "The Dawn of Day": 39955,
     "The Joyful Wisdom": 52881,
+    "The Will to Power Vol 1": 52915,
+    "The Will to Power Vol 2": 52914,
+    "Early Greek Philosophy": 51548,
+    "Thoughts Out of Season Part 1": 37841,
+    "Thoughts Out of Season Part 2": 38226,
 }
 
 

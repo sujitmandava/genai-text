@@ -13,12 +13,14 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 
 import torch
 from transformers import (
-    GPT2LMHeadModel,
-    GPT2Tokenizer,
+    AutoModelForCausalLM,
+    AutoTokenizer,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
+    DataCollatorForLanguageModeling,
+    BitsAndBytesConfig
 )
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 def train(config: TrainingConfig, corpus_path: Path) -> None:
     """
-    Train GPT-2 model on Nietzsche corpus.
+    Train GPT-2 or Gemma 3 model on Nietzsche corpus.
 
     Args:
         config: Training configuration
@@ -56,14 +58,47 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
     logger.info(f"Max sequence length: {config.max_seq_length}")
     logger.info("=" * 80)
 
+    # Quantization config for 4-bit loading
+    bnb_config = None
+    if config.load_in_4bit:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+
     # Load tokenizer and model
     logger.info(f"Loading {config.model_name} tokenizer and model...")
-    tokenizer = GPT2Tokenizer.from_pretrained(config.model_name)
-    model = GPT2LMHeadModel.from_pretrained(config.model_name)
+    tokenizer = AutoTokenizer.from_pretrained(config.model_name)
+    model = AutoModelForCausalLM.from_pretrained(
+        config.model_name,
+        quantization_config=bnb_config,
+        device_map="auto" if config.load_in_4bit else None,
+        torch_dtype=torch.bfloat16 if config.load_in_4bit else None,
+    )
 
-    # Set pad token (GPT-2 doesn't have one by default)
-    tokenizer.pad_token = tokenizer.eos_token
-    model.config.pad_token_id = tokenizer.eos_token_id
+    # Set pad token if not set
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        model.config.pad_token_id = tokenizer.eos_token_id
+
+    # Apply LoRA if configured
+    if config.use_lora:
+        logger.info("Applying LoRA configuration...")
+        if config.load_in_4bit:
+            model = prepare_model_for_kbit_training(model)
+
+        lora_config = LoraConfig(
+            r=config.lora_r,
+            lora_alpha=config.lora_alpha,
+            lora_dropout=config.lora_dropout,
+            target_modules=config.lora_target_modules.split(","),
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+        model = get_peft_model(model, lora_config)
+        model.print_trainable_parameters()
 
     # Model info
     param_counts = count_parameters(model)
@@ -116,6 +151,7 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
         report_to=["tensorboard"],
         seed=config.seed,
         fp16=torch.cuda.is_available(),  # Mixed precision if CUDA available
+        gradient_checkpointing=config.use_lora,  # Memory efficiency when using LoRA
         dataloader_num_workers=0,  # Avoid multiprocessing issues
     )
 
@@ -188,6 +224,16 @@ def main():
         default=None,
         help="Output directory for model"
     )
+    parser.add_argument(
+        "--use-lora",
+        action="store_true",
+        help="Use LoRA for finetuning"
+    )
+    parser.add_argument(
+        "--load-in-4bit",
+        action="store_true",
+        help="Load model in 4-bit quantization"
+    )
 
     args = parser.parse_args()
 
@@ -207,6 +253,10 @@ def main():
         config.batch_size = args.batch_size
     if args.output_dir:
         config.output_dir = args.output_dir
+    if args.use_lora:
+        config.use_lora = True
+    if args.load_in_4bit:
+        config.load_in_4bit = True
 
     # Resolve corpus path
     corpus_path = Path(args.corpus)

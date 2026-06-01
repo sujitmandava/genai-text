@@ -2,12 +2,14 @@ requests>=2.31.0
 urllib3>=2.0.0
 
 # Training dependencies
-transformers>=4.30.0
+transformers>=4.42.0
 torch>=2.0.0
 datasets>=2.12.0
 tensorboard>=2.13.0
 numpy>=1.24.0
 accelerate>=0.20.0
+peft>=0.11.0
+bitsandbytes>=0.43.0
 python-dotenv>=1.0.0
 
 # RAG dependencies

@@ -8,7 +8,7 @@ from typing import Optional
 
 @dataclass
 class TrainingConfig:
-    """Configuration for GPT-2 fine-tuning on Nietzsche corpus."""
+    """Configuration for GPT-2 or Gemma 3 fine-tuning on Nietzsche corpus."""
 
     # Model
     model_name: str = "gpt2"
@@ -37,6 +37,16 @@ class TrainingConfig:
     # Data
     train_test_split: float = 0.1
     seed: int = 42
+
+    # LoRA configuration
+    use_lora: bool = False
+    lora_r: int = 16
+    lora_alpha: int = 32
+    lora_dropout: float = 0.05
+    lora_target_modules: str = "q_proj,v_proj"
+
+    # Quantization
+    load_in_4bit: bool = False
 
     # Evaluation
     eval_steps: int = 500

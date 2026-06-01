@@ -5,7 +5,7 @@
 #SBATCH --time=24:00:00          ## Increase for gpt2-medium or larger models
 #SBATCH --nodes=1               ## How many computers/nodes do you need? Usually 1
 #SBATCH --ntasks=1              ## How many CPUs or processors do you need? (default value 1)
-#SBATCH --mem=25G               ## More headroom for model load, checkpoints, and Trainer
+#SBATCH --mem=40G               ## More headroom for model load, checkpoints, and Trainer
 #SBATCH --job-name=text_train
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 echo "======================================================================"
-echo "Job: train GPT-2 model"
+echo "Job: train GPT-2/Gemma 3 model"
 echo "Job ID: ${SLURM_JOB_ID:-N/A}"
 echo "Node: ${SLURM_NODELIST:-$(hostname)}"
 echo "GPUs: ${CUDA_VISIBLE_DEVICES:-N/A}"
@@ -40,6 +40,8 @@ TRAIN_EPOCHS="${TRAIN_EPOCHS:-3}"
 TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-4}"
 TRAIN_OUTPUT_DIR="${TRAIN_OUTPUT_DIR:-models/nietzsche-bot}"
 TRAIN_CORPUS="${TRAIN_CORPUS:-src/data/processed/training_corpus.txt}"
+USE_LORA="${USE_LORA:-false}"
+LOAD_IN_4BIT="${LOAD_IN_4BIT:-false}"
 
 echo ""
 echo "Training configuration:"
@@ -48,6 +50,8 @@ echo "  Epochs: ${TRAIN_EPOCHS}"
 echo "  Batch size: ${TRAIN_BATCH_SIZE}"
 echo "  Output directory: ${TRAIN_OUTPUT_DIR}"
 echo "  Corpus: ${TRAIN_CORPUS}"
+echo "  Use LoRA: ${USE_LORA}"
+echo "  4-bit quantization: ${LOAD_IN_4BIT}"
 echo ""
 
 if [[ ! -f "${TRAIN_CORPUS}" ]]; then
@@ -70,12 +74,24 @@ fi
 echo "Starting training..."
 echo ""
 
+LORA_ARG=""
+if [[ "${USE_LORA}" == "true" ]]; then
+    LORA_ARG="--use-lora"
+fi
+
+QUANT_ARG=""
+if [[ "${LOAD_IN_4BIT}" == "true" ]]; then
+    QUANT_ARG="--load-in-4bit"
+fi
+
 python "${PROJECT_ROOT}/src/training/train.py" \
     --corpus "${TRAIN_CORPUS}" \
     --model "${TRAIN_MODEL}" \
     --epochs "${TRAIN_EPOCHS}" \
     --batch-size "${TRAIN_BATCH_SIZE}" \
-    --output-dir "${TRAIN_OUTPUT_DIR}"
+    --output-dir "${TRAIN_OUTPUT_DIR}" \
+    ${LORA_ARG} \
+    ${QUANT_ARG}
 
 echo ""
 echo "======================================================================"
