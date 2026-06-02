@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 import sys
 import time
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -18,7 +19,8 @@ from transformers import (
     Trainer,
     TrainingArguments,
     DataCollatorForLanguageModeling,
-    BitsAndBytesConfig
+    BitsAndBytesConfig,
+    EarlyStoppingCallback
 )
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
@@ -32,13 +34,14 @@ from src.training.utils import set_seed, setup_logging, count_parameters, format
 logger = logging.getLogger(__name__)
 
 
-def train(config: TrainingConfig, corpus_path: Path) -> None:
+def train(config: TrainingConfig, corpus_path: Path, resume_from_checkpoint: Optional[str] = None) -> None:
     """
     Train GPT-2 or Gemma 3 model on Nietzsche corpus.
 
     Args:
         config: Training configuration
         corpus_path: Path to training_corpus.txt
+        resume_from_checkpoint: Path to checkpoint dir to resume from, or "true" to auto-detect latest, or None
     """
     start_time = time.time()
 
@@ -127,20 +130,24 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Use LoRA-specific learning rate if LoRA is enabled
+    effective_learning_rate = config.lora_learning_rate if config.use_lora else config.learning_rate
+
     training_args = TrainingArguments(
         output_dir=str(output_dir),
         num_train_epochs=config.epochs,
         per_device_train_batch_size=config.batch_size,
         per_device_eval_batch_size=config.batch_size,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
-        learning_rate=config.learning_rate,
+        learning_rate=effective_learning_rate,
         weight_decay=config.weight_decay,
         max_grad_norm=config.max_grad_norm,
         adam_epsilon=config.adam_epsilon,
-        warmup_steps=config.warmup_steps,
+        warmup_ratio=config.warmup_ratio,
         logging_dir=config.logging_dir,
         logging_steps=100,
-        save_steps=config.checkpoint_steps,
+        save_strategy="steps",
+        save_steps=config.eval_steps,
         save_total_limit=config.save_total_limit,
         eval_strategy="steps",
         eval_steps=config.eval_steps,
@@ -150,7 +157,8 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
         greater_is_better=False,
         report_to=["tensorboard"],
         seed=config.seed,
-        fp16=torch.cuda.is_available(),  # Mixed precision if CUDA available
+        bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
+        fp16=torch.cuda.is_available() and not torch.cuda.is_bf16_supported(),
         gradient_checkpointing=config.use_lora,  # Memory efficiency when using LoRA
         dataloader_num_workers=0,  # Avoid multiprocessing issues
     )
@@ -162,11 +170,19 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         data_collator=data_collator,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=config.early_stopping_patience)],
     )
 
     # Train
     logger.info("Starting training...")
-    trainer.train()
+    # Handle resume_from_checkpoint: if "true", pass True for auto-detect; if path, pass path; if None, pass None
+    resume_checkpoint = None
+    if resume_from_checkpoint is not None:
+        if resume_from_checkpoint.lower() == "true":
+            resume_checkpoint = True
+        else:
+            resume_checkpoint = resume_from_checkpoint
+    trainer.train(resume_from_checkpoint=resume_checkpoint)
 
     # Save final model
     final_model_path = output_dir / "final"
@@ -234,6 +250,12 @@ def main():
         action="store_true",
         help="Load model in 4-bit quantization"
     )
+    parser.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        help="Path to checkpoint dir to resume from, or 'true' to auto-detect latest"
+    )
 
     args = parser.parse_args()
 
@@ -264,7 +286,7 @@ def main():
         raise FileNotFoundError(f"Corpus not found: {corpus_path}")
 
     # Train
-    train(config, corpus_path)
+    train(config, corpus_path, resume_from_checkpoint=args.resume)
 
 
 if __name__ == "__main__":

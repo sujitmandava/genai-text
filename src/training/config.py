@@ -16,17 +16,17 @@ class TrainingConfig:
     # Training hyperparameters
     batch_size: int = 4
     learning_rate: float = 5e-5
-    epochs: int = 3
+    epochs: int = 10
     max_seq_length: int = 512
     gradient_accumulation_steps: int = 4
-    warmup_steps: int = 500
+    warmup_ratio: float = 0.05
 
     # Paths
     output_dir: str = "models/nietzsche-gpt2"
     logging_dir: str = "logs/training"
 
     # Checkpointing
-    checkpoint_steps: int = 500
+    checkpoint_steps: int = 20
     save_total_limit: int = 3
 
     # Optimization
@@ -43,14 +43,16 @@ class TrainingConfig:
     lora_r: int = 16
     lora_alpha: int = 32
     lora_dropout: float = 0.05
-    lora_target_modules: str = "q_proj,v_proj"
+    lora_target_modules: str = "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj"
+    lora_learning_rate: float = 2e-4
 
     # Quantization
     load_in_4bit: bool = False
 
     # Evaluation
-    eval_steps: int = 500
+    eval_steps: int = 20
     eval_accumulation_steps: int = 1
+    early_stopping_patience: int = 3
 
     # Generation settings for evaluation
     generation_max_length: int = 100
@@ -80,3 +82,5 @@ class TrainingConfig:
         assert self.epochs > 0, "epochs must be positive"
         assert self.max_seq_length > 0, "max_seq_length must be positive"
         assert 0 < self.train_test_split < 1, "train_test_split must be between 0 and 1"
+        assert 0 <= self.warmup_ratio < 1, "warmup_ratio must be in [0, 1)"
+        assert self.early_stopping_patience > 0, "early_stopping_patience must be positive"
