@@ -86,12 +86,12 @@ fi
 
 python "${PROJECT_ROOT}/src/training/train.py" \
     --corpus "${TRAIN_CORPUS}" \
-    --model "${TRAIN_MODEL}" \
+    --model google/gemma-3-1b-pt \
     --epochs "${TRAIN_EPOCHS}" \
     --batch-size "${TRAIN_BATCH_SIZE}" \
     --output-dir "${TRAIN_OUTPUT_DIR}" \
-    ${LORA_ARG} \
-    ${QUANT_ARG}
+    --use-lora \
+    --load-in-4bit
 
 echo ""
 echo "======================================================================"
