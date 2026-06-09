@@ -12,8 +12,7 @@ findings and analysis.
 
 ## 1. Dataset
 
-**10 Nietzsche works** sourced from Project Gutenberg, totaling
-**~29,000 lines** of processed training text:
+**15 Nietzsche works** sourced from Project Gutenberg:
 
 | Work | Gutenberg ID |
 |---|---:|
@@ -27,9 +26,13 @@ findings and analysis.
 | Human, All Too Human | 38145 |
 | The Dawn of Day | 39955 |
 | The Joyful Wisdom | 52881 |
+| The Will to Power Vol 1 | 52915 |
+| The Will to Power Vol 2 | 52914 |
+| Early Greek Philosophy | 51548 |
+| Thoughts Out of Season Part 1 | 37841 |
+| Thoughts Out of Season Part 2 | 38226 |
 
-**RAG Index**: 3,974 passages extracted from 4 core texts (Beyond Good
-and Evil, Thus Spoke Zarathustra, Ecce Homo, The Antichrist), embedded
+**RAG Index**: 10,359 passages extracted from all 15 texts, embedded
 with sentence-transformers and indexed in FAISS for semantic retrieval.
 
 **Train/Val Split**: 90/10 split for language model training (seed 42).
@@ -67,7 +70,7 @@ Components:
 | `src/rag/ingest.py` | Embed passages and build FAISS index |
 | `src/training/train.py` | GPT-2 fine-tuning with Trainer API, checkpointing, TensorBoard |
 | `src/training/evaluate.py` | Compute perplexity, generate samples |
-| `app.py` | Gradio GUI with chat and prose generation tabs |
+| `app.py` | Gradio GUI with conversational chat (style selection, advanced settings) |
 
 ## 3. Training Configuration
 
@@ -95,7 +98,7 @@ validation loss.
 |---|---|
 | Validation perplexity | 44.1 |
 | Validation set size | 85 samples |
-| RAG index size | 3,974 passages |
+| RAG index size | 10,359 passages |
 | Retrieval latency | <100ms (CPU) |
 
 Perplexity of 44 on a small validation set is reasonable for a
@@ -126,9 +129,8 @@ occasionally loops or drifts from the grounded context.
 
 1. **No held-out test set evaluation.** Perplexity is computed on the
    validation split only; no blind test set exists.
-2. **Limited RAG coverage.** Only 4 of 10 downloaded texts are
-   indexed. Queries about The Birth of Tragedy or Human, All Too Human
-   will not retrieve relevant passages.
+2. ~~**Limited RAG coverage.**~~ *Resolved.* All 15 texts are now indexed
+   (10,359 passages).
 3. **No human evaluation.** "Nietzsche-likeness" is judged informally;
    no systematic annotation study.
 4. **Repetition not penalized.** Generation uses temperature/top-p
@@ -156,10 +158,9 @@ The dominant failure mode is looping. Immediate fixes:
 6. **Add LPIPS or style-consistency loss.** Not directly applicable to
    text, but a style classifier head could encourage Nietzschean tone.
 
-### C. Expand RAG coverage
+### C. ~~Expand RAG coverage~~ (Completed)
 
-7. **Index all 10 texts.** Current pipeline only covers 4; extending
-   to full corpus improves retrieval breadth.
+7. ~~**Index all texts.**~~ *Done.* All 15 texts now indexed (10,359 passages).
 8. **Chunk overlap.** Current ~200-word passages have no overlap;
    sliding window would improve retrieval recall.
 9. **Hybrid retrieval.** Add BM25 alongside dense retrieval for
@@ -289,4 +290,3 @@ quality.
 1. Run Gemma-LoRA training on HPC
 2. Evaluate and compare both models
 3. Update inference pipeline for LoRA adapter loading
-4. Expand RAG coverage to all 10 texts
