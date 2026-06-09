@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 import sys
 import time
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -13,12 +14,15 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 
 import torch
 from transformers import (
-    GPT2LMHeadModel,
-    GPT2Tokenizer,
+    AutoModelForCausalLM,
+    AutoTokenizer,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
+    DataCollatorForLanguageModeling,
+    BitsAndBytesConfig,
+    EarlyStoppingCallback
 )
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -30,13 +34,14 @@ from src.training.utils import set_seed, setup_logging, count_parameters, format
 logger = logging.getLogger(__name__)
 
 
-def train(config: TrainingConfig, corpus_path: Path) -> None:
+def train(config: TrainingConfig, corpus_path: Path, resume_from_checkpoint: Optional[str] = None) -> None:
     """
-    Train GPT-2 model on Nietzsche corpus.
+    Train GPT-2 or Gemma 3 model on Nietzsche corpus.
 
     Args:
         config: Training configuration
         corpus_path: Path to training_corpus.txt
+        resume_from_checkpoint: Path to checkpoint dir to resume from, or "true" to auto-detect latest, or None
     """
     start_time = time.time()
 
@@ -56,14 +61,47 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
     logger.info(f"Max sequence length: {config.max_seq_length}")
     logger.info("=" * 80)
 
+    # Quantization config for 4-bit loading
+    bnb_config = None
+    if config.load_in_4bit:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+
     # Load tokenizer and model
     logger.info(f"Loading {config.model_name} tokenizer and model...")
-    tokenizer = GPT2Tokenizer.from_pretrained(config.model_name)
-    model = GPT2LMHeadModel.from_pretrained(config.model_name)
+    tokenizer = AutoTokenizer.from_pretrained(config.model_name)
+    model = AutoModelForCausalLM.from_pretrained(
+        config.model_name,
+        quantization_config=bnb_config,
+        device_map="auto" if config.load_in_4bit else None,
+        torch_dtype=torch.bfloat16 if config.load_in_4bit else None,
+    )
 
-    # Set pad token (GPT-2 doesn't have one by default)
-    tokenizer.pad_token = tokenizer.eos_token
-    model.config.pad_token_id = tokenizer.eos_token_id
+    # Set pad token if not set
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        model.config.pad_token_id = tokenizer.eos_token_id
+
+    # Apply LoRA if configured
+    if config.use_lora:
+        logger.info("Applying LoRA configuration...")
+        if config.load_in_4bit:
+            model = prepare_model_for_kbit_training(model)
+
+        lora_config = LoraConfig(
+            r=config.lora_r,
+            lora_alpha=config.lora_alpha,
+            lora_dropout=config.lora_dropout,
+            target_modules=config.lora_target_modules.split(","),
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+        model = get_peft_model(model, lora_config)
+        model.print_trainable_parameters()
 
     # Model info
     param_counts = count_parameters(model)
@@ -92,20 +130,24 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Use LoRA-specific learning rate if LoRA is enabled
+    effective_learning_rate = config.lora_learning_rate if config.use_lora else config.learning_rate
+
     training_args = TrainingArguments(
         output_dir=str(output_dir),
         num_train_epochs=config.epochs,
         per_device_train_batch_size=config.batch_size,
         per_device_eval_batch_size=config.batch_size,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
-        learning_rate=config.learning_rate,
+        learning_rate=effective_learning_rate,
         weight_decay=config.weight_decay,
         max_grad_norm=config.max_grad_norm,
         adam_epsilon=config.adam_epsilon,
-        warmup_steps=config.warmup_steps,
+        warmup_ratio=config.warmup_ratio,
         logging_dir=config.logging_dir,
         logging_steps=100,
-        save_steps=config.checkpoint_steps,
+        save_strategy="steps",
+        save_steps=config.eval_steps,
         save_total_limit=config.save_total_limit,
         eval_strategy="steps",
         eval_steps=config.eval_steps,
@@ -115,7 +157,9 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
         greater_is_better=False,
         report_to=["tensorboard"],
         seed=config.seed,
-        fp16=torch.cuda.is_available(),  # Mixed precision if CUDA available
+        bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
+        fp16=torch.cuda.is_available() and not torch.cuda.is_bf16_supported(),
+        gradient_checkpointing=config.use_lora,  # Memory efficiency when using LoRA
         dataloader_num_workers=0,  # Avoid multiprocessing issues
     )
 
@@ -126,11 +170,19 @@ def train(config: TrainingConfig, corpus_path: Path) -> None:
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         data_collator=data_collator,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=config.early_stopping_patience)],
     )
 
     # Train
     logger.info("Starting training...")
-    trainer.train()
+    # Handle resume_from_checkpoint: if "true", pass True for auto-detect; if path, pass path; if None, pass None
+    resume_checkpoint = None
+    if resume_from_checkpoint is not None:
+        if resume_from_checkpoint.lower() == "true":
+            resume_checkpoint = True
+        else:
+            resume_checkpoint = resume_from_checkpoint
+    trainer.train(resume_from_checkpoint=resume_checkpoint)
 
     # Save final model
     final_model_path = output_dir / "final"
@@ -188,6 +240,22 @@ def main():
         default=None,
         help="Output directory for model"
     )
+    parser.add_argument(
+        "--use-lora",
+        action="store_true",
+        help="Use LoRA for finetuning"
+    )
+    parser.add_argument(
+        "--load-in-4bit",
+        action="store_true",
+        help="Load model in 4-bit quantization"
+    )
+    parser.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        help="Path to checkpoint dir to resume from, or 'true' to auto-detect latest"
+    )
 
     args = parser.parse_args()
 
@@ -207,6 +275,10 @@ def main():
         config.batch_size = args.batch_size
     if args.output_dir:
         config.output_dir = args.output_dir
+    if args.use_lora:
+        config.use_lora = True
+    if args.load_in_4bit:
+        config.load_in_4bit = True
 
     # Resolve corpus path
     corpus_path = Path(args.corpus)
@@ -214,7 +286,7 @@ def main():
         raise FileNotFoundError(f"Corpus not found: {corpus_path}")
 
     # Train
-    train(config, corpus_path)
+    train(config, corpus_path, resume_from_checkpoint=args.resume)
 
 
 if __name__ == "__main__":

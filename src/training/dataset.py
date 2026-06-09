@@ -6,7 +6,7 @@ from typing import Optional
 
 import torch
 from torch.utils.data import Dataset
-from transformers import GPT2Tokenizer
+from transformers import PreTrainedTokenizerBase
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class NietzscheDataset(Dataset):
     def __init__(
         self,
         corpus_path: Path,
-        tokenizer: GPT2Tokenizer,
+        tokenizer: PreTrainedTokenizerBase,
         max_seq_length: int = 512,
         train_split: bool = True,
         train_test_split: float = 0.1,
@@ -114,7 +114,7 @@ class NietzscheDataset(Dataset):
 
 def create_datasets(
     corpus_path: Path,
-    tokenizer: GPT2Tokenizer,
+    tokenizer: PreTrainedTokenizerBase,
     max_seq_length: int = 512,
     train_test_split: float = 0.1,
     seed: int = 42
